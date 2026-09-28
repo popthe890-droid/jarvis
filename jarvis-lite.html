@@ -205,7 +205,7 @@ ul.cmds b{color:var(--text);font-weight:600}
   var king = store.get("king", "Ghost King"), pitch = store.get("pitch", 0.5), rate = store.get("rate", 0.85);
   function aliases(){
     var a = [name.toLowerCase()];
-    if (a[0].indexOf("wraith") !== -1) a = a.concat(["wrath", "raith", "wraight"]);
+    if (a[0].indexOf("wraith") !== -1) a = a.concat(["race", "wrath", "raith", "wraight"]);
     return a;
   }
   function pageTitle(){ return "The " + king; }
@@ -672,7 +672,7 @@ ul.cmds b{color:var(--text);font-weight:600}
         if (!wakeOn()){ handle(txt); continue; }
         if ((window.speechSynthesis && speechSynthesis.speaking) || Date.now() < ignoreUntil) continue;
         var low = txt.toLowerCase(), idx = -1, alen = 0;
-        aliases().forEach(function(a){ var j = low.indexOf(a); if (j !== -1 && (idx === -1 || j < idx)){ idx = j; alen = a.length; } });
+        aliases().forEach(function(a){ var j = low.search(new RegExp("\\b" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b")); if (j !== -1 && (idx === -1 || j < idx)){ idx = j; alen = a.length; } });
         if (idx !== -1){
           var rest = txt.slice(idx + alen).replace(/^[\s,]+/, "");
           sfx("wake"); orb.className = "orb listening";
