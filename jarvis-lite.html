@@ -74,6 +74,9 @@ ul.cmds b{color:var(--text);font-weight:600}
       <li><b>"open YouTube"</b> (Google, Gmail, Maps, Spotify, Netflix, GitHub)</li>
       <li><b>"search for cool robots"</b>, <b>"play lofi music"</b></li>
       <li><b>"what's the weather"</b></li>
+      <li><b>"tell me a fun fact"</b>, <b>"roast me"</b></li>
+      <li><b>"make the orb red"</b> (blue, green, purple, gold)</li>
+      <li><b>"butler mode"</b>, <b>"sarcastic mode"</b>, <b>"hype mode"</b>, <b>"normal mode"</b></li>
     </ul>
   </details>
 
@@ -91,6 +94,10 @@ ul.cmds b{color:var(--text);font-weight:600}
     <summary>Settings</summary>
     <div class="row"><label for="nameIn">Assistant name</label><input id="nameIn"></div>
     <div class="row"><label for="voiceSel">Voice</label><select id="voiceSel"></select></div>
+    <div class="row"><label for="colSel">Colour theme</label><select id="colSel"><option value="blue">Blue (Jarvis)</option><option value="red">Red (Iron Man)</option><option value="green">Green</option><option value="purple">Purple</option><option value="gold">Gold</option></select></div>
+    <div class="row"><label for="perSel">Personality</label><select id="perSel"><option value="classic">Classic</option><option value="butler">Butler</option><option value="sarcastic">Sarcastic</option><option value="hype">Hype</option></select></div>
+    <div class="row"><label><input type="checkbox" id="wakeOn"> Wake word: say the name to wake it (no clicking)</label></div>
+    <div class="row"><label><input type="checkbox" id="sfxOn"> Sound effects</label></div>
     <div class="row"><label><input type="checkbox" id="keepOn"> Keep listening after each answer</label></div>
   </details>
 </main>
@@ -114,8 +121,72 @@ ul.cmds b{color:var(--text);font-weight:600}
     "Why do programmers prefer dark mode? Because light attracts bugs.",
     "I would tell you a UDP joke, but you might not get it.",
     "Why did the laptop get cold? It left its Windows open.",
-    "There are ten kinds of people: those who understand binary and those who don't."
+    "There are ten kinds of people: those who understand binary and those who don't.",
+    "Why did the developer go broke? He used up all his cache.",
+    "What is a computer's favourite snack? Microchips.",
+    "Why do Java developers wear glasses? Because they don't C sharp.",
+    "Why was the robot tired? It had a hard drive.",
+    "What do you call a fake noodle? An impasta.",
+    "Why did the scarecrow win an award? He was outstanding in his field.",
+    "Why don't skeletons fight each other? They don't have the guts.",
+    "I asked my computer for a joke. It said: error 404, humour not found."
   ];
+  var facts = [
+    "Honey never spoils. Edible honey has been found in ancient Egyptian tombs.",
+    "Octopuses have three hearts.",
+    "A day on Venus is longer than a year on Venus.",
+    "Bananas are berries, but strawberries are not.",
+    "The first computer bug was a real moth, found in a Harvard computer in 1947.",
+    "Wombats make cube-shaped droppings.",
+    "Sharks are older than trees.",
+    "Australia is wider than the Moon.",
+    "The first message sent over the ancestor of the internet was just the letters L and O. The system crashed before it could finish typing login.",
+    "A group of flamingos is called a flamboyance.",
+    "The Eiffel Tower can grow taller by around fifteen centimetres in summer heat."
+  ];
+  var roasts = [
+    "You have the confidence of someone who has never lost a game of rock paper scissors. Probably because you always pick rock.",
+    "Your search history must be a wild ride. I would never look, but I would be entertained.",
+    "You asked a robot to roast you. That is already the punchline.",
+    "You have so many browser tabs open that I am worried about your laptop."
+  ];
+  var personas = {
+    classic:{pre:[""],post:[""],hi:"Hello, how can I help?",who:"I am NAME, your assistant.",huh:"Sorry, I don't know that one yet. You can teach me in the panel below.",yes:"Yes?"},
+    butler:{pre:["Certainly. ","Very good. ","At once. "],post:[""," Will there be anything else?"],hi:"Good day. How may I be of service?",who:"I am NAME, your humble digital butler.",huh:"I do beg your pardon, I am afraid I do not know that one.",yes:"Yes, sir?"},
+    sarcastic:{pre:["Oh, wow, a question. ","Sure, why not. ","Fine. ",""],post:[""," You are welcome, by the way."],hi:"Oh, hi. Look who remembered I exist.",who:"I am NAME. Your very patient assistant.",huh:"No idea what that means. Try harder.",yes:"What now?"},
+    hype:{pre:["Boom! ","Let's go! ","You got it! "],post:[""," Legendary!"],hi:"Yo! Ready to make some magic happen!",who:"I'm NAME, your legendary sidekick!",huh:"Whoa, didn't catch that one! Teach me in the panel below!",yes:"I'm here! Hit me!"}
+  };
+  var colours = {blue:["#38d5ff","#1a7fff"], red:["#ff5a4d","#c4161c"], green:["#4dffa0","#0f9d58"], purple:["#c58bff","#7a3cff"], gold:["#ffd24d","#e08a00"]};
+  var colour = store.get("colour", "blue"), persona = store.get("persona", "classic");
+  function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+  function setColour(c, save){
+    if (!colours[c]) c = "blue"; colour = c;
+    var st = document.documentElement.style;
+    st.setProperty("--glow", colours[c][0]); st.setProperty("--glow2", colours[c][1]);
+    $("colSel").value = c; if (save) store.set("colour", c);
+  }
+  function setPersona(x, save){
+    if (!personas[x]) x = "classic"; persona = x;
+    $("perSel").value = x; if (save) store.set("persona", x);
+  }
+
+  // Sound effects (made with the browser's built-in audio, no files needed)
+  var ac = null, booted = false, ignoreUntil = 0;
+  var seqs = {boot:[[440,0,.12],[660,.12,.12],[880,.24,.22]], listen:[[880,0,.08]], wake:[[660,0,.08],[990,.09,.12]]};
+  function sfx(k){
+    if (!$("sfxOn").checked) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      seqs[k].forEach(function(n){
+        var o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + n[1];
+        o.type = "sine"; o.frequency.value = n[0];
+        g.gain.setValueAtTime(.0001, t0);
+        g.gain.exponentialRampToValueAtTime(.15, t0 + .02);
+        g.gain.exponentialRampToValueAtTime(.0001, t0 + n[2]);
+        o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + n[2] + .05);
+      });
+    } catch(e){}
+  }
   var sites = {
     youtube:"https://www.youtube.com", google:"https://www.google.com", gmail:"https://mail.google.com",
     maps:"https://maps.google.com", spotify:"https://open.spotify.com", netflix:"https://www.netflix.com", github:"https://github.com"
@@ -156,11 +227,13 @@ ul.cmds b{color:var(--text);font-weight:600}
     var v = voices.filter(function(x){ return x.name === voiceName; })[0];
     if (v) u.voice = v;
     u.onstart = function(){ orb.className = "orb speaking"; };
-    u.onend = u.onerror = function(){ orb.className = "orb"; if (done) done(); };
+    u.onend = u.onerror = function(){ orb.className = "orb"; ignoreUntil = Date.now() + 800; if (done) done(); };
     speechSynthesis.speak(u);
   }
 
-  function reply(text, link){
+  function reply(text, link, plain){
+    var P = personas[persona];
+    if (!plain) text = pick(P.pre) + text + pick(P.post);
     say("bot", text, link);
     speak(text, function(){ if ($("keepOn").checked) listen(); });
   }
@@ -175,11 +248,11 @@ ul.cmds b{color:var(--text);font-weight:600}
     var t = raw.toLowerCase().replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
     var n = name.toLowerCase();
     if (t.indexOf(n + " ") === 0) t = t.slice(n.length + 1);
-    if (!t) return reply("Yes?");
+    if (!t) return reply(personas[persona].yes, null, true);
     say("you", raw);
 
     for (var i = 0; i < taught.length; i++){
-      if (t.indexOf(taught[i].phrase.toLowerCase()) !== -1) return reply(taught[i].reply);
+      if (t.indexOf(taught[i].phrase.toLowerCase()) !== -1) return reply(taught[i].reply, null, true);
     }
     var m;
     if ((m = t.match(/(\d+(?:\.\d+)?) (plus|minus|times|divided by) (\d+(?:\.\d+)?)/))){
@@ -194,34 +267,76 @@ ul.cmds b{color:var(--text);font-weight:600}
     if (/weather/.test(t)) return openSite("https://www.google.com/search?q=weather", "the weather");
     if (/time/.test(t)) return reply("It is " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ".");
     if (/\b(date|day is it|today)\b/.test(t)) return reply("Today is " + new Date().toLocaleDateString([], {weekday:"long", day:"numeric", month:"long", year:"numeric"}) + ".");
-    if (/joke/.test(t)) return reply(jokes[Math.floor(Math.random() * jokes.length)]);
+    if ((m = t.match(/\b(butler|sarcastic|hype|classic|normal)\b/)) && /(mode|be |personality|switch|go )/.test(t)){
+      setPersona(m[1] === "normal" ? "classic" : m[1], true);
+      return reply(personas[persona].hi, null, true);
+    }
+    if ((m = t.match(/\b(blue|red|green|purple|gold)\b/)) && /(colou?r|theme|orb|make|change|switch|turn)/.test(t)){
+      setColour(m[1], true); return reply("Switching to " + m[1] + ".");
+    }
+    if (/iron man/.test(t)){ setColour("red", true); return reply("Red it is."); }
+    if (/fun fact|something interesting|random fact|\bfact\b/.test(t)) return reply(pick(facts), null, true);
+    if (/roast/.test(t)) return reply(pick(roasts), null, true);
+    if (/joke/.test(t)) return reply(pick(jokes), null, true);
     if (/flip a coin/.test(t)) return reply(Math.random() < 0.5 ? "Heads." : "Tails.");
     if (/roll a (dice|die)/.test(t)) return reply("You rolled a " + (1 + Math.floor(Math.random() * 6)) + ".");
-    if (/your name|who are you/.test(t)) return reply("I am " + name + ", your assistant.");
-    if (/\b(hello|hi|hey)\b/.test(t)) return reply(greeting);
-    reply("Sorry, I don't know that one yet. You can teach me in the panel below.");
+    if (/your name|who are you/.test(t)) return reply(personas[persona].who.replace("NAME", name), null, true);
+    if (/\b(hello|hi|hey)\b/.test(t)) return reply(personas[persona].hi, null, true);
+    reply(personas[persona].huh, null, true);
   }
 
-  // Speech recognition
+  // Speech recognition (with optional wake word)
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = null, listening = false;
+  var rec = null, listening = false, userStopped = false, awakeUntil = 0;
+  function wakeOn(){ return $("wakeOn").checked; }
   function listen(){
     if (!SR){ status.textContent = "Voice input isn't supported here. Try Chrome or Edge, or type instead."; return; }
     if (listening) return;
-    rec = new SR(); rec.lang = "en-AU"; rec.interimResults = false;
-    rec.onstart = function(){ listening = true; orb.className = "orb listening"; status.textContent = "Listening..."; };
-    rec.onresult = function(e){ handle(e.results[0][0].transcript); };
-    rec.onerror = function(e){
-      status.textContent = e.error === "not-allowed" ? "Microphone blocked. Allow it in the address bar, then try again." :
-        e.error === "no-speech" ? "I didn't hear anything. Click the orb to try again." : "Voice error: " + e.error;
+    userStopped = false;
+    rec = new SR(); rec.lang = "en-AU"; rec.interimResults = false; rec.continuous = wakeOn();
+    rec.onstart = function(){
+      listening = true;
+      if (wakeOn()){ status.textContent = "Waiting for \"" + name + "\"..."; }
+      else { orb.className = "orb listening"; status.textContent = "Listening..."; sfx("listen"); }
     };
-    rec.onend = function(){ listening = false; if (orb.className.indexOf("speaking") === -1) orb.className = "orb"; if (/Listening/.test(status.textContent)) status.textContent = "Ready."; };
+    rec.onresult = function(e){
+      for (var i = e.resultIndex; i < e.results.length; i++){
+        if (!e.results[i].isFinal) continue;
+        var txt = e.results[i][0].transcript;
+        if (!wakeOn()){ handle(txt); continue; }
+        if ((window.speechSynthesis && speechSynthesis.speaking) || Date.now() < ignoreUntil) continue;
+        var idx = txt.toLowerCase().indexOf(name.toLowerCase());
+        if (idx !== -1){
+          var rest = txt.slice(idx + name.length).replace(/^[\s,]+/, "");
+          sfx("wake"); orb.className = "orb listening";
+          if (rest) handle(rest); else { awakeUntil = Date.now() + 10000; reply(personas[persona].yes, null, true); }
+        } else if (Date.now() < awakeUntil){
+          awakeUntil = 0; handle(txt);
+        }
+      }
+    };
+    rec.onerror = function(e){
+      if (e.error === "not-allowed"){ $("wakeOn").checked = false; userStopped = true; status.textContent = "Microphone blocked. Allow it in the address bar, then try again."; }
+      else if (e.error === "no-speech"){ if (!wakeOn()) status.textContent = "I didn't hear anything. Click the orb to try again."; }
+      else if (e.error !== "aborted"){ status.textContent = "Voice error: " + e.error; }
+    };
+    rec.onend = function(){
+      listening = false;
+      if (orb.className.indexOf("speaking") === -1) orb.className = "orb";
+      if (wakeOn() && !userStopped){ setTimeout(listen, 300); return; }
+      if (/Listening|Waiting/.test(status.textContent)) status.textContent = "Ready.";
+    };
     try { rec.start(); } catch(e){}
   }
   orb.addEventListener("click", function(){
-    if (listening && rec){ rec.stop(); return; }
+    if (!booted){ booted = true; sfx("boot"); }
+    if (listening && rec){ userStopped = true; $("wakeOn").checked = false; rec.stop(); return; }
     if (window.speechSynthesis) speechSynthesis.cancel();
     listen();
+  });
+  $("wakeOn").addEventListener("change", function(){
+    if (this.checked){ if (!booted){ booted = true; sfx("boot"); } listen(); }
+    else if (listening && rec){ userStopped = true; rec.stop(); }
   });
 
   $("typeForm").addEventListener("submit", function(e){
@@ -255,6 +370,11 @@ ul.cmds b{color:var(--text);font-weight:600}
   $("nameIn").addEventListener("change", function(){ name = this.value.trim() || "Jarvis"; store.set("name", name); applyName(); });
   $("voiceSel").addEventListener("change", function(){ voiceName = this.value; store.set("voice", voiceName); speak("This is my new voice."); });
 
+  $("colSel").addEventListener("change", function(){ setColour(this.value, true); });
+  $("perSel").addEventListener("change", function(){ setPersona(this.value, true); reply(personas[persona].hi, null, true); });
+  $("sfxOn").checked = store.get("sfx", true);
+  $("sfxOn").addEventListener("change", function(){ store.set("sfx", this.checked); sfx("wake"); });
+  setColour(colour); setPersona(persona);
   applyName(); drawTaught();
   say("bot", "Online. Click the orb and talk, or type a command.");
 })();
