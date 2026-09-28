@@ -17,7 +17,7 @@ main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
 h1{font:600 1.6rem/1.2 "Trebuchet MS","Segoe UI",sans-serif;letter-spacing:.04em;margin:0}
 .sub{color:var(--dim);margin:4px 0 0}
 .stage{display:flex;flex-direction:column;align-items:center;padding:28px 0 12px}
-.orb{width:150px;height:150px;border-radius:50%;border:0;cursor:pointer;color:var(--bg);font-weight:700;font-size:1rem;
+.orb{position:relative;width:50%;aspect-ratio:1;border-radius:50%;border:0;cursor:pointer;color:var(--bg);font-weight:700;font-size:1rem;
 background:radial-gradient(circle at 35% 30%,#bff3ff,var(--glow) 35%,var(--glow2) 100%);
 box-shadow:0 0 40px color-mix(in srgb,var(--glow) 55%,transparent),inset 0 0 20px rgba(255,255,255,.35);animation:breathe 4s ease-in-out infinite}
 .orb:focus-visible{outline:3px solid var(--warn);outline-offset:6px}
@@ -49,6 +49,9 @@ ul.cmds b{color:var(--text);font-weight:600}
 #timerBox{display:flex;gap:12px;align-items:center;justify-content:center;margin:12px 0 0;font:600 1.5rem/1 "Trebuchet MS","Segoe UI",sans-serif;color:var(--glow)}
 #timerBox[hidden]{display:none}
 .quick{display:flex;gap:8px;margin-top:10px}
+.orbwrap{position:relative;width:min(300px,100%);aspect-ratio:1;display:grid;place-items:center}
+.orbwrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#todoList li{margin:4px 0}
 </style>
 </head>
 <body>
@@ -57,7 +60,7 @@ ul.cmds b{color:var(--text);font-weight:600}
   <p class="sub">Click the orb and say something. Works best in Chrome or Edge.</p>
 
   <div class="stage">
-    <button class="orb" id="orb" aria-label="Start listening">Listen</button>
+    <div class="orbwrap"><canvas id="viz" aria-hidden="true"></canvas><button class="orb" id="orb" aria-label="Start listening">Listen</button></div>
     <p id="status" role="status" aria-live="polite">Ready.</p>
     <div id="timerBox" hidden><span id="timerText"></span><button class="btn" type="button" id="timerStop">Cancel</button></div>
     <div class="quick"><button class="btn" type="button" id="focusBtn">Focus 25 min</button><button class="btn" type="button" id="breakBtn">Break 5 min</button></div>
@@ -82,6 +85,9 @@ ul.cmds b{color:var(--text);font-weight:600}
       <li><b>"open school Gmail"</b>, <b>"open personal Drive"</b> (after you add accounts below)</li>
       <li><b>"start a 25 minute focus timer"</b> (focus sessions get an automatic 5 minute break)</li>
       <li><b>"set a timer for 10 minutes"</b>, <b>"how much time is left"</b>, <b>"cancel the timer"</b></li>
+      <li><b>"good morning"</b> (your briefing: date, weather, to-do list, fun fact)</li>
+      <li><b>"add buy a handle to my list"</b>, <b>"what's on my list"</b>, <b>"remove handle from my list"</b></li>
+      <li><b>"hollow"</b>, <b>"MC"</b> (opens your games; add more in "My apps and games")</li>
       <li><b>"tell me a fun fact"</b>, <b>"roast me"</b></li>
       <li><b>"make the orb red"</b> (blue, green, purple, gold)</li>
       <li><b>"butler mode"</b>, <b>"sarcastic mode"</b>, <b>"hype mode"</b>, <b>"normal mode"</b></li>
@@ -96,6 +102,23 @@ ul.cmds b{color:var(--text);font-weight:600}
       <button class="btn" type="submit">Save phrase</button>
     </form>
     <ul id="taught"></ul>
+  </details>
+
+  <details>
+    <summary>My to-do list</summary>
+    <form class="say" id="todoForm"><input id="todoIn" placeholder="Add a task" aria-label="Add a task" autocomplete="off"><button class="btn" type="submit">Add</button></form>
+    <ul id="todoList"></ul>
+  </details>
+
+  <details>
+    <summary>My apps and games</summary>
+    <p class="sub">Say a word and it opens that app. Your browser will ask "Open this app?" the first time. Tick "Always allow" so it stops asking. Steam games use <b>steam://rungameid/</b> plus the game's number (it's in the game's Steam store web address). Other links that work: <b>ms-settings:</b>, <b>calculator:</b>, <b>spotify:</b>, <b>discord://</b> or any website.</p>
+    <form id="appForm">
+      <div class="row"><label for="apWords">Words to say (separate with commas)</label><input id="apWords" placeholder="e.g. terraria, terra" required></div>
+      <div class="row"><label for="apUrl">Link to open</label><input id="apUrl" placeholder="e.g. steam://rungameid/105600" required></div>
+      <button class="btn" type="submit">Save app</button>
+    </form>
+    <ul id="appList"></ul>
   </details>
 
   <details>
@@ -240,6 +263,96 @@ ul.cmds b{color:var(--text);font-weight:600}
     else { reply("Your " + nice(t.mins) + " timer is done.", null, true); }
   }
 
+  // To-do list
+  var todos = store.get("todos", []);
+  function drawTodos(){
+    var ul = $("todoList"); ul.innerHTML = "";
+    todos.forEach(function(x, i){
+      var li = document.createElement("li");
+      li.textContent = x + "  ";
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = "Done";
+      b.addEventListener("click", function(){ todos.splice(i, 1); saveTodos(); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  function saveTodos(){ store.set("todos", todos); drawTodos(); }
+  function addTodo(x){ x = x.trim(); if (!x) return; todos.push(x.charAt(0).toUpperCase() + x.slice(1)); saveTodos(); }
+  function todoSummary(max){
+    if (!todos.length) return "Your list is empty.";
+    var n = todos.length;
+    return "You have " + n + " thing" + (n === 1 ? "" : "s") + " on your list: " + todos.slice(0, max).join(", ") + (n > max ? ", and more." : ".");
+  }
+
+  // Real weather (free Open-Meteo service, asks for your location once)
+  function wxDesc(c){
+    if (c === 0) return "clear"; if (c === 1) return "mostly clear"; if (c === 2) return "partly cloudy"; if (c === 3) return "overcast";
+    if (c === 45 || c === 48) return "foggy"; if (c >= 51 && c <= 57) return "drizzly"; if (c >= 61 && c <= 67) return "rainy";
+    if (c >= 71 && c <= 77) return "snowy"; if (c >= 80 && c <= 82) return "showery"; if (c >= 95) return "stormy"; return "cloudy";
+  }
+  function getWeather(cb){
+    if (!navigator.geolocation || !window.fetch){ cb(null); return; }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var u = "https://api.open-meteo.com/v1/forecast?latitude=" + pos.coords.latitude.toFixed(2) + "&longitude=" + pos.coords.longitude.toFixed(2) +
+        "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto";
+      fetch(u).then(function(r){ return r.json(); }).then(function(d){
+        cb("It is " + Math.round(d.current.temperature_2m) + " degrees and " + wxDesc(d.current.weather_code) + " right now, with a high of " +
+          Math.round(d.daily.temperature_2m_max[0]) + " and a low of " + Math.round(d.daily.temperature_2m_min[0]) + ".");
+      }).catch(function(){ cb(null); });
+    }, function(){ cb(null); }, {timeout: 8000});
+  }
+
+  // Voice visualiser: rings around the orb move with your mic (listening) or a wave (speaking)
+  var cv = $("viz"), cx = cv.getContext("2d"), analyser = null, freq = null, micStream = null;
+  var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function sizeCv(){ var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = r.width * d; cv.height = r.height * d; }
+  function startMeter(){
+    if (analyser || !navigator.mediaDevices) return;
+    navigator.mediaDevices.getUserMedia({audio: true}).then(function(st){
+      micStream = st; ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.resume) ac.resume();
+      var src = ac.createMediaStreamSource(st); analyser = ac.createAnalyser(); analyser.fftSize = 128;
+      src.connect(analyser); freq = new Uint8Array(analyser.frequencyBinCount);
+    }).catch(function(){});
+  }
+  function stopMeter(){
+    if (micStream){ micStream.getTracks().forEach(function(t){ t.stop(); }); }
+    micStream = null; analyser = null;
+  }
+  function draw(now){
+    var W = cv.width, c = W / 2, base = W * 0.28, N = 48;
+    cx.clearRect(0, 0, W, W);
+    var mode = orb.className.indexOf("speaking") !== -1 ? "speak" : listening ? "listen" : "idle";
+    if (analyser && mode === "listen") analyser.getByteFrequencyData(freq);
+    cx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--glow").trim() || "#38d5ff";
+    cx.lineWidth = Math.max(2, W * 0.008); cx.lineCap = "round";
+    for (var i = 0; i < N; i++){
+      var a = i / N * Math.PI * 2, v, k = i < N / 2 ? i : N - 1 - i;
+      if (mode === "listen" && analyser) v = freq[Math.floor(k / (N / 2) * freq.length * 0.7)] / 255;
+      else if (mode === "speak") v = 0.35 + 0.35 * Math.abs(Math.sin(now / 120 + i * 0.7)) * Math.abs(Math.sin(now / 310 + i * 0.3));
+      else if (mode === "listen") v = 0.15 + 0.1 * Math.sin(now / 200 + i);
+      else v = 0.06 + 0.04 * Math.sin(now / 900 + i * 0.5);
+      var len = W * 0.03 + v * W * 0.16;
+      cx.beginPath(); cx.moveTo(c + Math.cos(a) * base, c + Math.sin(a) * base);
+      cx.lineTo(c + Math.cos(a) * (base + len), c + Math.sin(a) * (base + len)); cx.stroke();
+    }
+    if (!reduceMotion) requestAnimationFrame(draw);
+  }
+
+  // Apps and games
+  var apps = [];
+  var defApps = [
+    {triggers:["hollow"], url:"steam://rungameid/367520", label:"Hollow Knight"},
+    {triggers:["mc"], url:"https://education.minecraft.net/open", label:"Minecraft Education"}
+  ];
+  function safeUrl(u){ return /^[a-z][a-z0-9+.\-]*:/i.test(u) && !/^(javascript|data|vbscript):/i.test(u); }
+  function launchApp(a){
+    if (!safeUrl(a.url)) return reply("That link doesn't look safe, so I won't open it.", null, true);
+    if (/^https?:/i.test(a.url)) return openSite(a.url, a.label);
+    try { location.href = a.url; } catch(e){}
+    reply("Launching " + a.label + ".", a.url);
+  }
+
   var accounts = [];
   var gsites = {
     gmail:"https://mail.google.com/mail/?authuser=EMAIL", drive:"https://drive.google.com/drive/?authuser=EMAIL",
@@ -260,7 +373,7 @@ ul.cmds b{color:var(--text);font-weight:600}
     p.textContent = (who === "you" ? "You: " : name + ": ") + text;
     if (link){
       var a = document.createElement("a");
-      a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open link";
+      a.href = link; if (/^https?:/i.test(link)){ a.target = "_blank"; a.rel = "noopener"; } a.textContent = " Open link";
       p.appendChild(a);
     }
     log.appendChild(p);
@@ -324,6 +437,33 @@ ul.cmds b{color:var(--text);font-weight:600}
         }
       }
     }
+    if ((m = t.match(/add (.+?) to (?:my |the )?(?:to[- ]?do )?(?:list|tasks)/)) || (m = t.match(/(?:remember to|remind me to|note to self) (.+)/))){
+      addTodo(m[1]); return reply("Added " + m[1] + " to your list.");
+    }
+    if ((m = t.match(/(?:remove|delete|finish|finished|done with|tick off|cross off|complete) (.+?) (?:from|off) (?:my |the )?(?:to[- ]?do )?(?:list|tasks)/))){
+      var ix = -1;
+      for (var z = 0; z < todos.length; z++){ if (todos[z].toLowerCase().indexOf(m[1]) !== -1) ix = z; }
+      if (ix === -1) return reply("I couldn't find that on your list.");
+      var gone = todos.splice(ix, 1)[0]; saveTodos(); return reply("Crossed off " + gone + ".");
+    }
+    if (/(clear|empty|wipe) (my |the )?(to[- ]?do )?(list|tasks)/.test(t)){ todos = []; saveTodos(); return reply("Your list is cleared."); }
+    if (/(what'?s on|what is on|read|show|tell me|check) (my |the )?(to[- ]?do )?(list|tasks)|what do i (need|have) to do/.test(t)) return reply(todoSummary(8), null, true);
+    if (/good (morning|afternoon|evening)|briefing|brief me/.test(t)){
+      var hr = new Date().getHours(), part = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+      status.textContent = "Putting together your briefing...";
+      getWeather(function(w){
+        if (/Putting together/.test(status.textContent)) status.textContent = "Ready.";
+        var today = new Date().toLocaleDateString([], {weekday:"long", day:"numeric", month:"long"});
+        reply(part + ". Today is " + today + ". " + (w ? w + " " : "") + todoSummary(4) + " Fun fact: " + pick(facts), null, true);
+      });
+      return;
+    }
+    for (var q = 0; q < apps.length; q++){
+      for (var w = 0; w < apps[q].triggers.length; w++){
+        var trg = apps[q].triggers[w];
+        if (trg && (" " + t + " ").indexOf(" " + trg + " ") !== -1) return launchApp(apps[q]);
+      }
+    }
     if (/(stop|cancel|clear|end) (the |my )?(timer|focus|break|countdown)/.test(t)){
       var had = !!timer; stopTimer();
       return reply(had ? "Timer cancelled." : "There is no timer running.");
@@ -349,7 +489,14 @@ ul.cmds b{color:var(--text);font-weight:600}
     if ((m = t.match(/open (youtube|google|gmail|maps|spotify|netflix|github)/))) return openSite(sites[m[1]], m[1]);
     if ((m = t.match(/^play (.+)/))) return openSite("https://www.youtube.com/results?search_query=" + encodeURIComponent(m[1]), "YouTube results for " + m[1]);
     if ((m = t.match(/(?:search|google|look up) (?:for )?(.+)/))) return openSite("https://www.google.com/search?q=" + encodeURIComponent(m[1]), "search results for " + m[1]);
-    if (/weather/.test(t)) return openSite("https://www.google.com/search?q=weather", "the weather");
+    if (/weather/.test(t)){
+      status.textContent = "Checking the weather...";
+      getWeather(function(w){
+        if (/Checking the weather/.test(status.textContent)) status.textContent = "Ready.";
+        if (w) reply(w, null, true); else openSite("https://www.google.com/search?q=weather", "the weather");
+      });
+      return;
+    }
     if (/time/.test(t)) return reply("It is " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ".");
     if (/\b(date|day is it|today)\b/.test(t)) return reply("Today is " + new Date().toLocaleDateString([], {weekday:"long", day:"numeric", month:"long", year:"numeric"}) + ".");
     if ((m = t.match(/\b(butler|sarcastic|hype|classic|normal)\b/)) && /(mode|be |personality|switch|go )/.test(t)){
@@ -380,7 +527,7 @@ ul.cmds b{color:var(--text);font-weight:600}
     userStopped = false;
     rec = new SR(); rec.lang = "en-AU"; rec.interimResults = false; rec.continuous = wakeOn();
     rec.onstart = function(){
-      listening = true;
+      listening = true; startMeter();
       if (wakeOn()){ status.textContent = "Waiting for \"" + name + "\"..."; }
       else { orb.className = "orb listening"; status.textContent = "Listening..."; sfx("listen"); }
     };
@@ -409,6 +556,7 @@ ul.cmds b{color:var(--text);font-weight:600}
       listening = false;
       if (orb.className.indexOf("speaking") === -1) orb.className = "orb";
       if (wakeOn() && !userStopped){ setTimeout(listen, 300); return; }
+      stopMeter();
       if (/Listening|Waiting/.test(status.textContent)) status.textContent = "Ready.";
     };
     try { rec.start(); } catch(e){}
@@ -459,6 +607,31 @@ ul.cmds b{color:var(--text);font-weight:600}
   $("focusBtn").addEventListener("click", function(){ if (!booted){ booted = true; sfx("boot"); } startTimer(25, "Focus", "focus"); reply("Focus session started. Good luck.", null, true); });
   $("breakBtn").addEventListener("click", function(){ if (!booted){ booted = true; sfx("boot"); } startTimer(5, "Break", "break"); reply("Break started. Relax.", null, true); });
 
+  // Apps and games panel
+  apps = store.get("apps2", defApps);
+  function drawApps(){
+    var ul = $("appList"); ul.innerHTML = "";
+    apps.forEach(function(x, i){
+      var li = document.createElement("li");
+      li.textContent = x.triggers.join(", ") + " \u2192 " + x.url + "  ";
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = "Remove";
+      b.addEventListener("click", function(){ apps.splice(i, 1); store.set("apps2", apps); drawApps(); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  $("appForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var words = $("apWords").value.toLowerCase().split(",").map(function(w){ return w.replace(/[^a-z0-9 ]/g, "").trim(); }).filter(Boolean);
+    var url = $("apUrl").value.trim();
+    if (!words.length || !safeUrl(url)){ status.textContent = "That link doesn't look right. Try steam://rungameid/NUMBER or a website."; return; }
+    apps.push({triggers: words, url: url, label: words[0]});
+    store.set("apps2", apps);
+    $("apWords").value = ""; $("apUrl").value = "";
+    drawApps();
+  });
+  drawApps();
+
   // Google accounts
   accounts = store.get("accounts", []);
   function drawAccounts(){
@@ -485,6 +658,9 @@ ul.cmds b{color:var(--text);font-weight:600}
   $("sfxOn").checked = store.get("sfx", true);
   $("sfxOn").addEventListener("change", function(){ store.set("sfx", this.checked); sfx("wake"); });
   setColour(colour); setPersona(persona);
+  $("todoForm").addEventListener("submit", function(e){ e.preventDefault(); addTodo($("todoIn").value); $("todoIn").value = ""; });
+  drawTodos();
+  sizeCv(); window.addEventListener("resize", sizeCv); requestAnimationFrame(draw);
   applyName(); drawTaught();
   say("bot", "Online. Click the orb and talk, or type a command.");
 })();
