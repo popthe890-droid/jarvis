@@ -154,7 +154,7 @@ ul.cmds b{color:var(--text);font-weight:600}
   };
 
   // ---- Easy settings: change these defaults ----
-  var name = store.get("name", "Jarvis");
+  var name = store.get("name", "Wraith");
   var greeting = "Hello, how can I help?";
   var taught = store.get("taught", []);
   var voiceName = store.get("voice", "");
@@ -194,7 +194,7 @@ ul.cmds b{color:var(--text);font-weight:600}
     "You have so many browser tabs open that I am worried about your laptop."
   ];
   var personas = {
-    wraith:{pre:["Understood, {king}. ","As you command. ","It is done. ","",""],post:[""," Command me, {king}.","",""],hi:"I am listening, {king}.",who:"I am the Wraith. I serve the {king}.",huh:"That command is unknown to me, {king}.",yes:"I am here, {king}."},
+    wraith:{pre:["Understood, {king}. ","As you command, {king}. ","It is done, {king}. ","Yes, {king}. "],post:[""],hi:"I am listening, {king}.",who:"I am the Wraith. I serve the {king}.",huh:"That command is unknown to me, {king}.",yes:"I am here, {king}."},
     classic:{pre:[""],post:[""],hi:"Hello, how can I help?",who:"I am NAME, your assistant.",huh:"Sorry, I don't know that one yet. You can teach me in the panel below.",yes:"Yes?"},
     butler:{pre:["Certainly. ","Very good. ","At once. "],post:[""," Will there be anything else?"],hi:"Good day. How may I be of service?",who:"I am NAME, your humble digital butler.",huh:"I do beg your pardon, I am afraid I do not know that one.",yes:"Yes, sir?"},
     sarcastic:{pre:["Oh, wow, a question. ","Sure, why not. ","Fine. ",""],post:[""," You are welcome, by the way."],hi:"Oh, hi. Look who remembered I exist.",who:"I am NAME. Your very patient assistant.",huh:"No idea what that means. Try harder.",yes:"What now?"},
@@ -203,6 +203,11 @@ ul.cmds b{color:var(--text);font-weight:600}
   var colours = {ghost:["#9fdcf0","#4a8fb0"], blue:["#38d5ff","#1a7fff"], red:["#ff5a4d","#c4161c"], green:["#4dffa0","#0f9d58"], purple:["#c58bff","#7a3cff"], gold:["#ffd24d","#e08a00"]};
   var colour = store.get("colour", "ghost"), persona = store.get("persona", "wraith");
   var king = store.get("king", "Ghost King"), pitch = store.get("pitch", 0.5), rate = store.get("rate", 0.85);
+  function aliases(){
+    var a = [name.toLowerCase()];
+    if (a[0].indexOf("wraith") !== -1) a = a.concat(["wrath", "raith", "wraight"]);
+    return a;
+  }
   function pageTitle(){ return "The " + king; }
   function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
   function setColour(c, save){
@@ -545,8 +550,9 @@ ul.cmds b{color:var(--text);font-weight:600}
 
   function handle(raw){
     var t = raw.toLowerCase().replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
-    var n = name.toLowerCase();
-    if (t.indexOf(n + " ") === 0) t = t.slice(n.length + 1);
+    var al = aliases().map(function(x){ return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); });
+    var nm = t.match(new RegExp("^(?:(?:hey|ok|okay|yo) )?(?:" + al.join("|") + ")(?: |$)"));
+    if (nm) t = t.slice(nm[0].length).trim();
     if (!t) return reply(personas[persona].yes, null, true);
     say("you", raw);
 
@@ -665,9 +671,10 @@ ul.cmds b{color:var(--text);font-weight:600}
         var txt = e.results[i][0].transcript;
         if (!wakeOn()){ handle(txt); continue; }
         if ((window.speechSynthesis && speechSynthesis.speaking) || Date.now() < ignoreUntil) continue;
-        var idx = txt.toLowerCase().indexOf(name.toLowerCase());
+        var low = txt.toLowerCase(), idx = -1, alen = 0;
+        aliases().forEach(function(a){ var j = low.indexOf(a); if (j !== -1 && (idx === -1 || j < idx)){ idx = j; alen = a.length; } });
         if (idx !== -1){
-          var rest = txt.slice(idx + name.length).replace(/^[\s,]+/, "");
+          var rest = txt.slice(idx + alen).replace(/^[\s,]+/, "");
           sfx("wake"); orb.className = "orb listening";
           if (rest) handle(rest); else { awakeUntil = Date.now() + 10000; reply(personas[persona].yes, null, true); }
         } else if (Date.now() < awakeUntil){
