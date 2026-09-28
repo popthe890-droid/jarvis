@@ -46,6 +46,9 @@ summary{cursor:pointer;font-weight:600}
 ul.cmds{margin:8px 0 0;padding-left:18px;color:var(--dim)}
 ul.cmds b{color:var(--text);font-weight:600}
 #taught li{color:var(--text)}
+#timerBox{display:flex;gap:12px;align-items:center;justify-content:center;margin:12px 0 0;font:600 1.5rem/1 "Trebuchet MS","Segoe UI",sans-serif;color:var(--glow)}
+#timerBox[hidden]{display:none}
+.quick{display:flex;gap:8px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -56,6 +59,8 @@ ul.cmds b{color:var(--text);font-weight:600}
   <div class="stage">
     <button class="orb" id="orb" aria-label="Start listening">Listen</button>
     <p id="status" role="status" aria-live="polite">Ready.</p>
+    <div id="timerBox" hidden><span id="timerText"></span><button class="btn" type="button" id="timerStop">Cancel</button></div>
+    <div class="quick"><button class="btn" type="button" id="focusBtn">Focus 25 min</button><button class="btn" type="button" id="breakBtn">Break 5 min</button></div>
   </div>
 
   <form class="say" id="typeForm">
@@ -74,6 +79,9 @@ ul.cmds b{color:var(--text);font-weight:600}
       <li><b>"open YouTube"</b> (Google, Gmail, Maps, Spotify, Netflix, GitHub)</li>
       <li><b>"search for cool robots"</b>, <b>"play lofi music"</b></li>
       <li><b>"what's the weather"</b></li>
+      <li><b>"open school Gmail"</b>, <b>"open personal Drive"</b> (after you add accounts below)</li>
+      <li><b>"start a 25 minute focus timer"</b> (focus sessions get an automatic 5 minute break)</li>
+      <li><b>"set a timer for 10 minutes"</b>, <b>"how much time is left"</b>, <b>"cancel the timer"</b></li>
       <li><b>"tell me a fun fact"</b>, <b>"roast me"</b></li>
       <li><b>"make the orb red"</b> (blue, green, purple, gold)</li>
       <li><b>"butler mode"</b>, <b>"sarcastic mode"</b>, <b>"hype mode"</b>, <b>"normal mode"</b></li>
@@ -88,6 +96,17 @@ ul.cmds b{color:var(--text);font-weight:600}
       <button class="btn" type="submit">Save phrase</button>
     </form>
     <ul id="taught"></ul>
+  </details>
+
+  <details>
+    <summary>My Google accounts</summary>
+    <p class="sub">Add a nickname and the email for each account. Then say "open school Gmail" or "open personal Drive". Works with Gmail, Drive, Calendar, Docs, YouTube, Classroom and Meet. Saved in this browser only.</p>
+    <form id="accForm">
+      <div class="row"><label for="aLabel">Nickname (one word)</label><input id="aLabel" placeholder="e.g. school" required pattern="[A-Za-z0-9]+"></div>
+      <div class="row"><label for="aEmail">Google email</label><input id="aEmail" type="email" placeholder="you@gmail.com" required></div>
+      <button class="btn" type="submit">Save account</button>
+    </form>
+    <ul id="accList"></ul>
   </details>
 
   <details>
@@ -172,7 +191,7 @@ ul.cmds b{color:var(--text);font-weight:600}
 
   // Sound effects (made with the browser's built-in audio, no files needed)
   var ac = null, booted = false, ignoreUntil = 0;
-  var seqs = {boot:[[440,0,.12],[660,.12,.12],[880,.24,.22]], listen:[[880,0,.08]], wake:[[660,0,.08],[990,.09,.12]]};
+  var seqs = {boot:[[440,0,.12],[660,.12,.12],[880,.24,.22]], listen:[[880,0,.08]], wake:[[660,0,.08],[990,.09,.12]], done:[[880,0,.15],[880,.2,.15],[1320,.4,.3]]};
   function sfx(k){
     if (!$("sfxOn").checked) return;
     try {
@@ -187,6 +206,47 @@ ul.cmds b{color:var(--text);font-weight:600}
       });
     } catch(e){}
   }
+  // Focus timer
+  var timer = null;
+  function fmt(ms){ var t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2); }
+  function nice(m){ var n = m < 1 ? Math.round(m * 60) : m; return n + " " + (m < 1 ? "second" : "minute") + (n === 1 ? "" : "s"); }
+  function parseDur(t){
+    if (/half an hour/.test(t)) return 30;
+    var m = t.match(/(\d+(?:\.\d+)?|an?) ?(hours?|hrs?|minutes?|mins?|seconds?|secs?)/);
+    if (!m) return null;
+    var n = /^an?$/.test(m[1]) ? 1 : parseFloat(m[1]), u = m[2].charAt(0);
+    return u === "h" ? n * 60 : u === "s" ? n / 60 : n;
+  }
+  function stopTimer(){
+    if (timer){ clearInterval(timer.iv); timer = null; }
+    $("timerBox").hidden = true; document.title = name + " Lite";
+  }
+  function tick(){
+    if (!timer) return;
+    var left = timer.end - Date.now();
+    if (left <= 0) return finishTimer();
+    $("timerText").textContent = timer.label + " " + fmt(left);
+    $("timerBox").hidden = false; document.title = fmt(left) + " " + timer.label;
+  }
+  function startTimer(mins, label, kind){
+    stopTimer();
+    timer = {end: Date.now() + mins * 60000, label: label, kind: kind, mins: mins};
+    tick(); timer.iv = setInterval(tick, 500);
+  }
+  function finishTimer(){
+    var t = timer; stopTimer(); sfx("done");
+    if (t.kind === "focus"){ reply("Focus session done. Nice work. Take a five minute break.", null, true); startTimer(5, "Break", "break"); }
+    else if (t.kind === "break"){ reply("Break over. Ready for another focus session?", null, true); }
+    else { reply("Your " + nice(t.mins) + " timer is done.", null, true); }
+  }
+
+  var accounts = [];
+  var gsites = {
+    gmail:"https://mail.google.com/mail/?authuser=EMAIL", drive:"https://drive.google.com/drive/?authuser=EMAIL",
+    calendar:"https://calendar.google.com/calendar/?authuser=EMAIL", docs:"https://docs.google.com/document/?authuser=EMAIL",
+    youtube:"https://www.youtube.com/?authuser=EMAIL", classroom:"https://classroom.google.com/?authuser=EMAIL",
+    meet:"https://meet.google.com/?authuser=EMAIL"
+  };
   var sites = {
     youtube:"https://www.youtube.com", google:"https://www.google.com", gmail:"https://mail.google.com",
     maps:"https://maps.google.com", spotify:"https://open.spotify.com", netflix:"https://www.netflix.com", github:"https://github.com"
@@ -255,6 +315,31 @@ ul.cmds b{color:var(--text);font-weight:600}
       if (t.indexOf(taught[i].phrase.toLowerCase()) !== -1) return reply(taught[i].reply, null, true);
     }
     var m;
+    if (/\bopen\b/.test(t)){
+      for (var k = 0; k < accounts.length; k++){
+        if (t.indexOf(accounts[k].label.toLowerCase()) !== -1){
+          var svc = "gmail";
+          Object.keys(gsites).forEach(function(key){ if (t.indexOf(key) !== -1) svc = key; });
+          return openSite(gsites[svc].replace("EMAIL", encodeURIComponent(accounts[k].email)), accounts[k].label + " " + svc);
+        }
+      }
+    }
+    if (/(stop|cancel|clear|end) (the |my )?(timer|focus|break|countdown)/.test(t)){
+      var had = !!timer; stopTimer();
+      return reply(had ? "Timer cancelled." : "There is no timer running.");
+    }
+    if (/(how (much|long)|time left|time remaining|timer status)/.test(t) && /(left|remaining|status)/.test(t)){
+      if (!timer) return reply("There is no timer running.");
+      var sl = Math.ceil((timer.end - Date.now()) / 1000);
+      return reply("About " + Math.floor(sl / 60) + " minutes and " + (sl % 60) + " seconds left on your " + timer.label.toLowerCase() + ".");
+    }
+    if (/\b(timer|focus|pomodoro|countdown)\b/.test(t) || (/\bbreak\b/.test(t) && parseDur(t))){
+      var isFocus = /focus|pomodoro/.test(t), isBreak = !isFocus && /\bbreak\b/.test(t);
+      var mins = parseDur(t) || (isFocus ? 25 : isBreak ? 5 : null);
+      if (!mins) return reply("For how long? Try: set a timer for 10 minutes.");
+      startTimer(mins, isFocus ? "Focus" : isBreak ? "Break" : "Timer", isFocus ? "focus" : isBreak ? "break" : "timer");
+      return reply("Starting a " + nice(mins) + (isFocus ? " focus session" : isBreak ? " break" : " timer") + ".");
+    }
     if ((m = t.match(/(\d+(?:\.\d+)?) (plus|minus|times|divided by) (\d+(?:\.\d+)?)/))){
       var a = parseFloat(m[1]), b = parseFloat(m[3]), r;
       if (m[2] === "plus") r = a + b; else if (m[2] === "minus") r = a - b;
@@ -370,6 +455,31 @@ ul.cmds b{color:var(--text);font-weight:600}
   $("nameIn").addEventListener("change", function(){ name = this.value.trim() || "Jarvis"; store.set("name", name); applyName(); });
   $("voiceSel").addEventListener("change", function(){ voiceName = this.value; store.set("voice", voiceName); speak("This is my new voice."); });
 
+  $("timerStop").addEventListener("click", function(){ stopTimer(); });
+  $("focusBtn").addEventListener("click", function(){ if (!booted){ booted = true; sfx("boot"); } startTimer(25, "Focus", "focus"); reply("Focus session started. Good luck.", null, true); });
+  $("breakBtn").addEventListener("click", function(){ if (!booted){ booted = true; sfx("boot"); } startTimer(5, "Break", "break"); reply("Break started. Relax.", null, true); });
+
+  // Google accounts
+  accounts = store.get("accounts", []);
+  function drawAccounts(){
+    var ul = $("accList"); ul.innerHTML = "";
+    accounts.forEach(function(x, i){
+      var li = document.createElement("li");
+      li.textContent = x.label + " \u2192 " + x.email + "  ";
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = "Remove";
+      b.addEventListener("click", function(){ accounts.splice(i, 1); store.set("accounts", accounts); drawAccounts(); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  $("accForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    accounts.push({label: $("aLabel").value.trim().toLowerCase(), email: $("aEmail").value.trim()});
+    store.set("accounts", accounts);
+    $("aLabel").value = ""; $("aEmail").value = "";
+    drawAccounts();
+  });
+  drawAccounts();
   $("colSel").addEventListener("change", function(){ setColour(this.value, true); });
   $("perSel").addEventListener("change", function(){ setPersona(this.value, true); reply(personas[persona].hi, null, true); });
   $("sfxOn").checked = store.get("sfx", true);
