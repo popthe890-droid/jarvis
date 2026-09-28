@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jarvis Lite</title>
+<style>
+:root{--bg:#070d18;--panel:#0f1a2c;--line:#1d3350;--text:#dbe9ff;--dim:#7f97b8;--glow:#38d5ff;--glow2:#1a7fff;--warn:#ffb84d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef4fc;--panel:#fff;--line:#c4d5ec;--text:#0c2140;--dim:#56708f;--glow:#0a8fc4;--glow2:#0b5fd6}}
+:root[data-theme="dark"]{--bg:#070d18;--panel:#0f1a2c;--line:#1d3350;--text:#dbe9ff;--dim:#7f97b8;--glow:#38d5ff;--glow2:#1a7fff}
+:root[data-theme="light"]{--bg:#eef4fc;--panel:#fff;--line:#c4d5ec;--text:#0c2140;--dim:#56708f;--glow:#0a8fc4;--glow2:#0b5fd6}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,sans-serif;min-height:100vh}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font:600 1.6rem/1.2 "Trebuchet MS","Segoe UI",sans-serif;letter-spacing:.04em;margin:0}
+.sub{color:var(--dim);margin:4px 0 0}
+.stage{display:flex;flex-direction:column;align-items:center;padding:28px 0 12px}
+.orb{width:150px;height:150px;border-radius:50%;border:0;cursor:pointer;color:var(--bg);font-weight:700;font-size:1rem;
+background:radial-gradient(circle at 35% 30%,#bff3ff,var(--glow) 35%,var(--glow2) 100%);
+box-shadow:0 0 40px color-mix(in srgb,var(--glow) 55%,transparent),inset 0 0 20px rgba(255,255,255,.35);animation:breathe 4s ease-in-out infinite}
+.orb:focus-visible{outline:3px solid var(--warn);outline-offset:6px}
+.orb.listening{animation:pulse .9s ease-in-out infinite}
+.orb.speaking{animation:pulse .45s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.04)}}
+@keyframes pulse{50%{transform:scale(1.13);box-shadow:0 0 70px var(--glow)}}
+@media (prefers-reduced-motion:reduce){.orb,.orb.listening,.orb.speaking{animation:none}}
+#status{margin:16px 0 0;color:var(--dim);min-height:1.5em;text-align:center}
+form.say{display:flex;gap:8px;margin:12px 0}
+input,select,button.btn{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-width:0}
+input:focus-visible,select:focus-visible,button.btn:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
+form.say input{flex:1}
+button.btn{cursor:pointer}
+button.btn:hover{border-color:var(--glow)}
+#log{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;height:230px;overflow-y:auto}
+#log p{margin:0 0 8px}
+#log .you{color:var(--dim)}
+#log .bot{color:var(--text)}
+#log a{color:var(--glow)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:14px}
+summary{cursor:pointer;font-weight:600}
+.row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+.row label{flex:1 1 100%;color:var(--dim);font-size:.9rem}
+.row input,.row select{flex:1}
+ul.cmds{margin:8px 0 0;padding-left:18px;color:var(--dim)}
+ul.cmds b{color:var(--text);font-weight:600}
+#taught li{color:var(--text)}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Jarvis</h1>
+  <p class="sub">Click the orb and say something. Works best in Chrome or Edge.</p>
+
+  <div class="stage">
+    <button class="orb" id="orb" aria-label="Start listening">Listen</button>
+    <p id="status" role="status" aria-live="polite">Ready.</p>
+  </div>
+
+  <form class="say" id="typeForm">
+    <input id="typed" placeholder="Or type a command here" aria-label="Type a command" autocomplete="off">
+    <button class="btn" type="submit">Send</button>
+  </form>
+
+  <div id="log" aria-live="polite"></div>
+
+  <details>
+    <summary>What can I say?</summary>
+    <ul class="cmds">
+      <li><b>"hello"</b>, <b>"what time is it"</b>, <b>"what's the date"</b></li>
+      <li><b>"tell me a joke"</b>, <b>"flip a coin"</b>, <b>"roll a dice"</b></li>
+      <li><b>"5 plus 7"</b> (also minus, times, divided by)</li>
+      <li><b>"open YouTube"</b> (Google, Gmail, Maps, Spotify, Netflix, GitHub)</li>
+      <li><b>"search for cool robots"</b>, <b>"play lofi music"</b></li>
+      <li><b>"what's the weather"</b></li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Teach it something new</summary>
+    <form id="teachForm">
+      <div class="row"><label for="tPhrase">When I say...</label><input id="tPhrase" placeholder="e.g. who is the best" required></div>
+      <div class="row"><label for="tReply">Reply with...</label><input id="tReply" placeholder="e.g. You are, obviously" required></div>
+      <button class="btn" type="submit">Save phrase</button>
+    </form>
+    <ul id="taught"></ul>
+  </details>
+
+  <details>
+    <summary>Settings</summary>
+    <div class="row"><label for="nameIn">Assistant name</label><input id="nameIn"></div>
+    <div class="row"><label for="voiceSel">Voice</label><select id="voiceSel"></select></div>
+    <div class="row"><label><input type="checkbox" id="keepOn"> Keep listening after each answer</label></div>
+  </details>
+</main>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var store = {
+    get: function(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+    set: function(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+  };
+
+  // ---- Easy settings: change these defaults ----
+  var name = store.get("name", "Jarvis");
+  var greeting = "Hello, how can I help?";
+  var taught = store.get("taught", []);
+  var voiceName = store.get("voice", "");
+  // ----------------------------------------------
+
+  var jokes = [
+    "Why do programmers prefer dark mode? Because light attracts bugs.",
+    "I would tell you a UDP joke, but you might not get it.",
+    "Why did the laptop get cold? It left its Windows open.",
+    "There are ten kinds of people: those who understand binary and those who don't."
+  ];
+  var sites = {
+    youtube:"https://www.youtube.com", google:"https://www.google.com", gmail:"https://mail.google.com",
+    maps:"https://maps.google.com", spotify:"https://open.spotify.com", netflix:"https://www.netflix.com", github:"https://github.com"
+  };
+
+  var log = $("log"), status = $("status"), orb = $("orb");
+
+  function say(who, text, link){
+    var p = document.createElement("p");
+    p.className = who;
+    p.textContent = (who === "you" ? "You: " : name + ": ") + text;
+    if (link){
+      var a = document.createElement("a");
+      a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = " Open link";
+      p.appendChild(a);
+    }
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  var voices = [];
+  function loadVoices(){
+    voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+    var sel = $("voiceSel"); sel.innerHTML = "";
+    voices.forEach(function(v, i){
+      var o = document.createElement("option");
+      o.value = v.name; o.textContent = v.name + " (" + v.lang + ")";
+      if (v.name === voiceName) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  if (window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+
+  function speak(text, done){
+    if (!window.speechSynthesis){ if (done) done(); return; }
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    var v = voices.filter(function(x){ return x.name === voiceName; })[0];
+    if (v) u.voice = v;
+    u.onstart = function(){ orb.className = "orb speaking"; };
+    u.onend = u.onerror = function(){ orb.className = "orb"; if (done) done(); };
+    speechSynthesis.speak(u);
+  }
+
+  function reply(text, link){
+    say("bot", text, link);
+    speak(text, function(){ if ($("keepOn").checked) listen(); });
+  }
+
+  function openSite(url, label){
+    var w = null;
+    try { w = window.open(url, "_blank", "noopener"); } catch(e){}
+    reply((w ? "Opening " : "Here is ") + label + ".", w ? null : url);
+  }
+
+  function handle(raw){
+    var t = raw.toLowerCase().replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim();
+    var n = name.toLowerCase();
+    if (t.indexOf(n + " ") === 0) t = t.slice(n.length + 1);
+    if (!t) return reply("Yes?");
+    say("you", raw);
+
+    for (var i = 0; i < taught.length; i++){
+      if (t.indexOf(taught[i].phrase.toLowerCase()) !== -1) return reply(taught[i].reply);
+    }
+    var m;
+    if ((m = t.match(/(\d+(?:\.\d+)?) (plus|minus|times|divided by) (\d+(?:\.\d+)?)/))){
+      var a = parseFloat(m[1]), b = parseFloat(m[3]), r;
+      if (m[2] === "plus") r = a + b; else if (m[2] === "minus") r = a - b;
+      else if (m[2] === "times") r = a * b; else r = b === 0 ? null : a / b;
+      return reply(r === null ? "I can't divide by zero." : m[1] + " " + m[2] + " " + m[3] + " is " + Math.round(r * 1000) / 1000 + ".");
+    }
+    if ((m = t.match(/open (youtube|google|gmail|maps|spotify|netflix|github)/))) return openSite(sites[m[1]], m[1]);
+    if ((m = t.match(/^play (.+)/))) return openSite("https://www.youtube.com/results?search_query=" + encodeURIComponent(m[1]), "YouTube results for " + m[1]);
+    if ((m = t.match(/(?:search|google|look up) (?:for )?(.+)/))) return openSite("https://www.google.com/search?q=" + encodeURIComponent(m[1]), "search results for " + m[1]);
+    if (/weather/.test(t)) return openSite("https://www.google.com/search?q=weather", "the weather");
+    if (/time/.test(t)) return reply("It is " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) + ".");
+    if (/\b(date|day is it|today)\b/.test(t)) return reply("Today is " + new Date().toLocaleDateString([], {weekday:"long", day:"numeric", month:"long", year:"numeric"}) + ".");
+    if (/joke/.test(t)) return reply(jokes[Math.floor(Math.random() * jokes.length)]);
+    if (/flip a coin/.test(t)) return reply(Math.random() < 0.5 ? "Heads." : "Tails.");
+    if (/roll a (dice|die)/.test(t)) return reply("You rolled a " + (1 + Math.floor(Math.random() * 6)) + ".");
+    if (/your name|who are you/.test(t)) return reply("I am " + name + ", your assistant.");
+    if (/\b(hello|hi|hey)\b/.test(t)) return reply(greeting);
+    reply("Sorry, I don't know that one yet. You can teach me in the panel below.");
+  }
+
+  // Speech recognition
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null, listening = false;
+  function listen(){
+    if (!SR){ status.textContent = "Voice input isn't supported here. Try Chrome or Edge, or type instead."; return; }
+    if (listening) return;
+    rec = new SR(); rec.lang = "en-AU"; rec.interimResults = false;
+    rec.onstart = function(){ listening = true; orb.className = "orb listening"; status.textContent = "Listening..."; };
+    rec.onresult = function(e){ handle(e.results[0][0].transcript); };
+    rec.onerror = function(e){
+      status.textContent = e.error === "not-allowed" ? "Microphone blocked. Allow it in the address bar, then try again." :
+        e.error === "no-speech" ? "I didn't hear anything. Click the orb to try again." : "Voice error: " + e.error;
+    };
+    rec.onend = function(){ listening = false; if (orb.className.indexOf("speaking") === -1) orb.className = "orb"; if (/Listening/.test(status.textContent)) status.textContent = "Ready."; };
+    try { rec.start(); } catch(e){}
+  }
+  orb.addEventListener("click", function(){
+    if (listening && rec){ rec.stop(); return; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    listen();
+  });
+
+  $("typeForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var v = $("typed").value.trim(); $("typed").value = "";
+    if (v) handle(v);
+  });
+
+  // Teach it
+  function drawTaught(){
+    var ul = $("taught"); ul.innerHTML = "";
+    taught.forEach(function(x, i){
+      var li = document.createElement("li");
+      li.textContent = "\"" + x.phrase + "\" \u2192 " + x.reply + "  ";
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = "Remove";
+      b.addEventListener("click", function(){ taught.splice(i, 1); store.set("taught", taught); drawTaught(); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  $("teachForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    taught.push({phrase: $("tPhrase").value.trim(), reply: $("tReply").value.trim()});
+    store.set("taught", taught);
+    $("tPhrase").value = ""; $("tReply").value = "";
+    drawTaught();
+  });
+
+  // Settings
+  function applyName(){ $("title").textContent = name; document.title = name + " Lite"; $("nameIn").value = name; }
+  $("nameIn").addEventListener("change", function(){ name = this.value.trim() || "Jarvis"; store.set("name", name); applyName(); });
+  $("voiceSel").addEventListener("change", function(){ voiceName = this.value; store.set("voice", voiceName); speak("This is my new voice."); });
+
+  applyName(); drawTaught();
+  say("bot", "Online. Click the orb and talk, or type a command.");
+})();
+</script>
+</body>
+</html>
