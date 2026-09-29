@@ -138,7 +138,7 @@ ul.cmds b{color:var(--text);font-weight:600}
     <div class="row"><label for="rateIn">Voice speed (lower is slower)</label><input id="rateIn" type="range" min="0.5" max="1.5" step="0.05"></div>
     <div class="row"><label for="kingIn">What should I call you?</label><input id="kingIn"></div>
     <div class="row"><label for="colSel">Colour theme</label><select id="colSel"><option value="ghost">Ghost</option><option value="blue">Blue (Jarvis)</option><option value="red">Red (Iron Man)</option><option value="green">Green</option><option value="purple">Purple</option><option value="gold">Gold</option></select></div>
-    <div class="row"><label for="perSel">Personality</label><select id="perSel"><option value="wraith">Wraith</option><option value="classic">Classic</option><option value="butler">Butler</option><option value="sarcastic">Sarcastic</option><option value="hype">Hype</option></select></div>
+    <div class="row"><label for="perSel">Personality</label><select id="perSel"><option value="wraith">Wraith</option><option value="classic">Classic</option><option value="butler">Butler</option><option value="sarcastic">Sarcastic</option><option value="hype">Hype</option><option value="servant">Servant</option></select></div>
     <div class="row"><label><input type="checkbox" id="wakeOn"> Wake word: say the name to wake it (no clicking)</label></div>
     <div class="row"><label><input type="checkbox" id="sfxOn"> Sound effects</label></div>
     <div class="row"><label><input type="checkbox" id="keepOn"> Keep listening after each answer</label></div>
@@ -198,7 +198,8 @@ ul.cmds b{color:var(--text);font-weight:600}
     classic:{pre:[""],post:[""],hi:"Hello, how can I help?",who:"I am NAME, your assistant.",huh:"Sorry, I don't know that one yet. You can teach me in the panel below.",yes:"Yes?"},
     butler:{pre:["Certainly. ","Very good. ","At once. "],post:[""," Will there be anything else?"],hi:"Good day. How may I be of service?",who:"I am NAME, your humble digital butler.",huh:"I do beg your pardon, I am afraid I do not know that one.",yes:"Yes, sir?"},
     sarcastic:{pre:["Oh, wow, a question. ","Sure, why not. ","Fine. ",""],post:[""," You are welcome, by the way."],hi:"Oh, hi. Look who remembered I exist.",who:"I am NAME. Your very patient assistant.",huh:"No idea what that means. Try harder.",yes:"What now?"},
-    hype:{pre:["Boom! ","Let's go! ","You got it! "],post:[""," Legendary!"],hi:"Yo! Ready to make some magic happen!",who:"I'm NAME, your legendary sidekick!",huh:"Whoa, didn't catch that one! Teach me in the panel below!",yes:"I'm here! Hit me!"}
+    hype:{pre:["Boom! ","Let's go! ","You got it! "],post:[""," Legendary!"],hi:"Yo! Ready to make some magic happen!",who:"I'm NAME, your legendary sidekick!",huh:"Whoa, didn't catch that one! Teach me in the panel below!",yes:"I'm here! Hit me!"},
+    servant:{pre:["","It is done. ","As you wish. "],post:[""," Your will has been carried out."],hi:"Welcome back. NAME awaits your command.",who:"I am NAME, ever at your service.",huh:"That command is unclear to me. Instruct me again.",yes:"I am listening."}
   };
   var colours = {ghost:["#9fdcf0","#4a8fb0"], blue:["#38d5ff","#1a7fff"], red:["#ff5a4d","#c4161c"], green:["#4dffa0","#0f9d58"], purple:["#c58bff","#7a3cff"], gold:["#ffd24d","#e08a00"]};
   var colour = store.get("colour", "ghost"), persona = store.get("persona", "wraith");
