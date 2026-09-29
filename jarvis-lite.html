@@ -9,25 +9,35 @@
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,sans-serif;min-height:100vh}
+body{margin:0;background:radial-gradient(ellipse at 50% 38%,color-mix(in srgb,var(--glow) 9%,var(--bg)) 0%,var(--bg) 68%);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,sans-serif;min-height:100vh}
 main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
-h1{font:600 1.6rem/1.2 "Trebuchet MS","Segoe UI",sans-serif;letter-spacing:.04em;margin:0}
-.sub{color:var(--dim);margin:4px 0 0}
-.stage{display:flex;flex-direction:column;align-items:center;padding:28px 0 12px}
-.orb{position:relative;width:50%;aspect-ratio:1;border-radius:50%;border:0;cursor:pointer;color:var(--bg);font-weight:700;font-size:1rem;
-background:radial-gradient(circle at 35% 30%,#bff3ff,var(--glow) 35%,var(--glow2) 100%);
-box-shadow:0 0 40px color-mix(in srgb,var(--glow) 55%,transparent),inset 0 0 20px rgba(255,255,255,.35);animation:breathe 4s ease-in-out infinite}
+h1{font:600 1.6rem/1.2 "Trebuchet MS","Segoe UI",sans-serif;letter-spacing:.28em;margin:0;text-align:center;text-transform:uppercase;text-shadow:0 0 14px color-mix(in srgb,var(--glow) 70%,transparent)}
+.sub{color:var(--dim);margin:4px 0 0;text-align:center}
+.stage{display:flex;flex-direction:column;align-items:center;padding:28px 0 12px;position:relative}
+.stage::before,.stage::after{content:"";position:absolute;top:50%;left:50%;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--glow) 30%,transparent),transparent);pointer-events:none;z-index:0}
+.stage::before{width:100%;height:1px;transform:translate(-50%,-50%)}
+.stage::after{width:1px;height:78%;transform:translate(-50%,-50%);background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--glow) 30%,transparent),transparent)}
+.orb{position:relative;z-index:1;width:62%;aspect-ratio:1;border-radius:50%;border:1px solid color-mix(in srgb,var(--glow) 55%,transparent);cursor:pointer;color:var(--text);font-weight:600;font-size:1rem;
+background:radial-gradient(circle at 50% 46%,color-mix(in srgb,var(--glow) 20%,var(--bg)) 0%,var(--bg) 72%);
+box-shadow:0 0 50px color-mix(in srgb,var(--glow) 45%,transparent),inset 0 0 40px color-mix(in srgb,var(--glow) 25%,transparent);animation:breathe 4s ease-in-out infinite}
 .orb:focus-visible{outline:3px solid var(--warn);outline-offset:6px}
 .orb.listening{animation:pulse .9s ease-in-out infinite}
 .orb.speaking{animation:pulse .45s ease-in-out infinite}
 @keyframes breathe{50%{transform:scale(1.04)}}
 @keyframes pulse{50%{transform:scale(1.13);box-shadow:0 0 70px var(--glow)}}
 @media (prefers-reduced-motion:reduce){.orb,.orb.listening,.orb.speaking{animation:none}}
-#status{margin:16px 0 0;color:var(--dim);min-height:1.5em;text-align:center}
+#status{position:absolute;left:50%;bottom:27%;transform:translateX(-50%);z-index:1;margin:0;color:var(--glow);font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;min-height:1.2em;text-align:center;text-shadow:0 0 8px color-mix(in srgb,var(--glow) 60%,transparent)}
+#hudName{position:absolute;z-index:1;left:50%;top:44%;transform:translate(-50%,-50%);font:600 1.4rem/1 "Trebuchet MS","Segoe UI",sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--text);text-shadow:0 0 16px color-mix(in srgb,var(--glow) 80%,transparent);pointer-events:none;max-width:70%;text-align:center}
 form.say{display:flex;gap:8px;margin:12px 0}
+#typeForm{align-items:center;gap:0;margin:20px auto 0;max-width:480px;background:color-mix(in srgb,var(--glow) 6%,var(--panel));border:1px solid color-mix(in srgb,var(--glow) 45%,var(--line));border-radius:999px;padding:6px;box-shadow:0 0 22px color-mix(in srgb,var(--glow) 18%,transparent)}
+.micIcon{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid color-mix(in srgb,var(--glow) 55%,var(--line));background:color-mix(in srgb,var(--glow) 10%,transparent);color:var(--glow);display:flex;align-items:center;justify-content:center;font-size:1rem;margin-right:6px}
 input,select,button.btn{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-width:0}
 input:focus-visible,select:focus-visible,button.btn:focus-visible{outline:2px solid var(--glow);outline-offset:1px}
 form.say input{flex:1}
+#typeForm input{background:transparent;border:0;border-radius:0;box-shadow:none}
+#typeForm input::placeholder{color:var(--dim)}
+#typeForm button.btn{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid color-mix(in srgb,var(--glow) 55%,var(--line));background:color-mix(in srgb,var(--glow) 16%,transparent);color:var(--glow);font-size:0;padding:0;display:flex;align-items:center;justify-content:center}
+#typeForm button.btn::after{content:"\27A4";font-size:.9rem}
 button.btn{cursor:pointer}
 button.btn:hover{border-color:var(--glow)}
 #log{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;height:230px;overflow-y:auto}
@@ -46,8 +56,14 @@ ul.cmds b{color:var(--text);font-weight:600}
 #timerBox{display:flex;gap:12px;align-items:center;justify-content:center;margin:12px 0 0;font:600 1.5rem/1 "Trebuchet MS","Segoe UI",sans-serif;color:var(--glow)}
 #timerBox[hidden]{display:none}
 .quick{display:flex;gap:8px;margin-top:10px}
-.orbwrap{position:relative;width:min(300px,100%);aspect-ratio:1;display:grid;place-items:center}
-.orbwrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.orbwrap{position:relative;width:min(340px,92%);aspect-ratio:1;display:grid;place-items:center}
+.orbwrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.ring{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:0}
+.ringDash{border:2px dashed color-mix(in srgb,var(--glow) 45%,transparent)}
+.ringSolid{border:1px solid color-mix(in srgb,var(--glow) 28%,transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinRev{to{transform:rotate(-360deg)}}
+@media (prefers-reduced-motion:reduce){.ring{animation:none !important}}
 #todoList li{margin:4px 0}
 </style>
 </head>
@@ -57,14 +73,21 @@ ul.cmds b{color:var(--text);font-weight:600}
   <p class="sub">Click the orb and say something. Works best in Chrome or Edge.</p>
 
   <div class="stage">
-    <div class="orbwrap"><canvas id="viz" aria-hidden="true"></canvas><button class="orb" id="orb" aria-label="Start listening">Listen</button></div>
-    <p id="status" role="status" aria-live="polite">Ready.</p>
+    <div class="orbwrap">
+      <div class="ring ringDash" style="inset:-2%;animation:spin 40s linear infinite"></div>
+      <div class="ring ringSolid" style="inset:6%;animation:spinRev 30s linear infinite"></div>
+      <div class="ring ringDash" style="inset:16%;border-style:dotted;animation:spin 22s linear infinite"></div>
+      <canvas id="viz" aria-hidden="true"></canvas>
+      <button class="orb" id="orb" aria-label="Start listening"></button>
+      <div id="hudName" aria-hidden="true"></div>
+      <p id="status" role="status" aria-live="polite">Ready.</p>
+    </div>
     <div id="timerBox" hidden><span id="timerText"></span><button class="btn" type="button" id="timerStop">Cancel</button></div>
     <div class="quick"><button class="btn" type="button" id="focusBtn">Focus 25 min</button><button class="btn" type="button" id="breakBtn">Break 5 min</button></div>
   </div>
 
   <form class="say" id="typeForm">
-    <input id="typed" placeholder="Or type a command here" aria-label="Type a command" autocomplete="off">
+    <span class="micIcon" aria-hidden="true">&#127908;</span><input id="typed" placeholder="Type a command or ask me anything..." aria-label="Type a command" autocomplete="off">
     <button class="btn" type="submit">Send</button>
   </form>
 
@@ -735,7 +758,7 @@ ul.cmds b{color:var(--text);font-weight:600}
   });
 
   // Settings
-  function applyName(){ $("title").textContent = "The " + king; document.title = pageTitle(); $("nameIn").value = name; }
+  function applyName(){ $("title").textContent = "The " + king; document.title = pageTitle(); $("nameIn").value = name; $("hudName").textContent = name; }
   $("nameIn").addEventListener("change", function(){ name = this.value.trim() || "Jarvis"; store.set("name", name); applyName(); });
   $("voiceSel").addEventListener("change", function(){ voiceName = this.value; store.set("voice", voiceName); speak("This is my new voice."); });
 
